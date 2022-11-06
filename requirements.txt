@@ -1,2 +1,5 @@
+Cython==0.29.32
 grpcio==1.50.0
+-e git+https://github.com/gennadiryan/py-grpc-compiler.git@aaa6c970e1bb342fce44dd5b490667482b695496#egg=grpcio_tools
+protobuf==4.21.9
 six==1.16.0
