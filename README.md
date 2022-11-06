@@ -15,6 +15,12 @@ There are a few possible approaches to address this with more flexibility:
 - Explicit relative imports: this would entail the generated code importing other generated code explicitly by prefixing the top-level package name with the appropriate number of dots.
 - Absolute imports: this would entail the understanding that all protos are to be dumped in a predetermined namespace package, and prefixing the module names with this top-level package to ensure that no imports can be interpreted as Python2-style implicit relative imports. The top-level package name would need to be in the PYTHONPATH of the environment running the generated code, which is a portable approach. A common package name for some set of generated code in a system encourages reuse of code. Several such packages could be referenced, allowing one to use proto package names (as defined by the `package [package_name]` directive) to refer to the corresponding package of generated code on the PYTHONPATH without namespace pollution or collisions.
 
+There are some implementation challenges to achieve this. So far the `grpc_python_generator` has been reconfigured to accept command line arguments corresponding to `import_prefix` and `prefixes_to_filter`, which allow one to specify changes to the module name as it is computed from the proto filename. The arguments are provided like so:
+`grpc_tools.protoc --grpc_python_out="[[import_prefix];[prefix_to_filter][(,prefix_to_filter)*]:]/path/to/grpc/python/out/"`.
+The arguments are prefixed to the filename followed by a colon; the arguments themselves are a pair of semicolon-delimited statements (hence requiring quotes in the shell), the first of which is the optional `import_prefix` string, and the second of which is any number of optional comma-delimited `prefix_to_filter`.
+
+This is sufficient to achieve absolute imports in a package among the `*_pb2_grpc.py` files; however, these files need to refer to `*_pb2.py` files, which do not have the same correction in place yet. Hence only in use cases where all messages are defined in the same `*_pb2.py` file would this work. In particular, the `python_generator` uses quite similar logic to resolve proto filenames to python package names, but does not have a built-in capability to add or strip prefixes, which thus remains to be added.
+
 ## Requirements
 
 This fork groups a few distinct components from the gRPC and protobuf packages:

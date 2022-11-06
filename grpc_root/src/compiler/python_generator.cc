@@ -681,6 +681,22 @@ bool PrivateGenerator::PrintBetaPreamble(grpc_generator::Printer* out) {
 
 bool PrivateGenerator::PrintPreamble(grpc_generator::Printer* out) {
   StringMap var;
+
+  var["Value1"] = file->package();
+  var["Value2"] = file->filename();
+  out->Print(var, "# $Value1$::$Value2$\n");
+  out->Print(var, "\n");
+
+  for (unsigned int i = 0; i < file->package_parts().size(); ++i) {
+    var["Value"] = file->package_parts()[i];
+    out->Print(var, "# $Value$\n");
+  } out->Print("\n");
+
+  for (unsigned int i = 0; i < file->GetImportNames().size(); ++i) {
+    var["Value"] = file->GetImportNames()[i];
+    out->Print(var, "# $Value$\n");
+  } out->Print("\n");
+
   var["Package"] = config.grpc_package_root;
   out->Print(var, "import $Package$\n");
   if (generate_in_pb2_grpc) {
@@ -710,7 +726,13 @@ bool PrivateGenerator::PrintPreamble(grpc_generator::Printer* out) {
                         config.prefixes_to_filter);
         imports_set.insert(
             std::make_tuple(output_module_name, output_module_alias));
-      }
+
+        var["Value1"] = method->input_type_name();
+        var["Value2"] = method->get_input_type_name();
+        var["Value3"] = method->output_type_name();
+        var["Value4"] = method->get_output_type_name();
+        out->Print(var, "# $Value1$, $Value2$; $Value3$, $Value4$\n");
+      } out->Print("\n");
     }
 
     for (StringPairSet::iterator it = imports_set.begin();
@@ -719,7 +741,7 @@ bool PrivateGenerator::PrintPreamble(grpc_generator::Printer* out) {
       var["ModuleAlias"] = std::get<1>(*it);
       const size_t last_dot_pos = module_name.rfind('.');
       if (last_dot_pos == std::string::npos) {
-        var["ImportStatement"] = "import " + module_name;
+        var["ImportStatement"] = "from . import " + module_name;
       } else {
         var["ImportStatement"] = "from " + module_name.substr(0, last_dot_pos) +
                                  " import " +
@@ -858,24 +880,47 @@ static bool GenerateGrpc(GeneratorContext* context, PrivateGenerator& generator,
 
 static bool ParseParameters(const std::string& parameter,
                             std::string* grpc_version,
-                            std::vector<std::string>* strip_prefixes,
+                            std::string* import_prefix,
+                            std::vector<std::string>* prefixes_to_filter,
                             std::string* error) {
-  std::vector<std::string> comma_delimited_parameters;
-  grpc_python_generator::Split(parameter, ',', &comma_delimited_parameters);
-  if (comma_delimited_parameters.size() == 1 &&
-      comma_delimited_parameters[0].empty()) {
-    *grpc_version = "grpc_2_0";
-  } else if (comma_delimited_parameters.size() == 1) {
-    *grpc_version = comma_delimited_parameters[0];
-  } else if (comma_delimited_parameters.size() == 2) {
-    *grpc_version = comma_delimited_parameters[0];
-    std::copy(comma_delimited_parameters.begin() + 1,
-              comma_delimited_parameters.end(),
-              std::back_inserter(*strip_prefixes));
-  } else {
-    *error = "--grpc_python_out received too many comma-delimited parameters.";
+  *grpc_version = "grpc_2_0";
+
+  std::vector<std::string> semicolon_delimited_parameters;
+  grpc_python_generator::SplitParameters(parameter, ';', &semicolon_delimited_parameters);
+  if (semicolon_delimited_parameters.size() == 1) {
+    *error = "--grpc_python_out received too few semicolon-delimited parameters (which should not be possible).";
+    return false;
+  } else if (semicolon_delimited_parameters.size() == 2) {
+    if (semicolon_delimited_parameters[0].size() > 0) {
+      *import_prefix = semicolon_delimited_parameters[0];
+    }
+
+    std::vector<std::string> comma_delimited_parameters;
+    grpc_python_generator::SplitParameters(semicolon_delimited_parameters[1], ',', &comma_delimited_parameters);
+    for (unsigned int i = 0; i < comma_delimited_parameters.size(); ++i) {
+      if (comma_delimited_parameters[i].size() > 0) {
+        prefixes_to_filter->push_back(comma_delimited_parameters[i]);
+      }
+    }
+  } else if (semicolon_delimited_parameters.size() > 2) {
+    *error = "--grpc_python_out received too many semicolon-delimited parameters.";
     return false;
   }
+
+  // if (comma_delimited_parameters.size() == 1 &&
+  //     comma_delimited_parameters[0].empty()) {
+  //   *grpc_version = "grpc_2_0";
+  // } else if (comma_delimited_parameters.size() == 1) {
+  //   *grpc_version = comma_delimited_parameters[0];
+  // } else if (comma_delimited_parameters.size() == 2) {
+  //   *grpc_version = comma_delimited_parameters[0];
+  //   std::copy(comma_delimited_parameters.begin() + 1,
+  //             comma_delimited_parameters.end(),
+  //             std::back_inserter(*strip_prefixes));
+  // } else {
+  //   *error = "--grpc_python_out received too many comma-delimited parameters.";
+  //   return false;
+  // }
   return true;
 }
 
@@ -908,6 +953,7 @@ bool PythonGrpcGenerator::Generate(const FileDescriptor* file,
   std::string grpc_version;
   GeneratorConfiguration extended_config(config_);
   bool success = ParseParameters(parameter, &grpc_version,
+                                 &(extended_config.import_prefix),
                                  &(extended_config.prefixes_to_filter), error);
   PrivateGenerator generator(extended_config, &pbfile);
   if (!success) return false;

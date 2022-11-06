@@ -136,6 +136,21 @@ StringVector get_all_comments(const DescriptorType* descriptor) {
   return comments;
 }
 
+inline void SplitParameters(const std::string& s, char delim,
+                  std::vector<std::string>* append_to) {
+  if (!s.empty()) {
+    auto current = s.begin();
+    while (current < s.end()) {
+      const auto next = std::find(current, s.end(), delim);
+      append_to->emplace_back(current, next);
+      current = next + 1;
+      if (current == s.end()) {
+        append_to->emplace_back();
+      }
+    }
+  }
+}
+
 inline void Split(const std::string& s, char delim,
                   std::vector<std::string>* append_to) {
   if (s.empty()) {
