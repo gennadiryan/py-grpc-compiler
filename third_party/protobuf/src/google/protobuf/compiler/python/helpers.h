@@ -32,6 +32,7 @@
 #define GOOGLE_PROTOBUF_COMPILER_PYTHON_HELPERS_H__
 
 #include <string>
+#include <vector>
 
 #include <google/protobuf/descriptor.h>
 
@@ -49,6 +50,17 @@ std::string ResolveKeyword(const std::string& name);
 std::string GetFileName(const FileDescriptor* file_des,
                         const std::string& suffix);
 bool HasGenericServices(const FileDescriptor* file);
+
+bool ParseParameter(
+  const std::string& parameter,
+  std::vector<std::pair<std::string, std::string>>* options,
+  std::string* error
+);
+void SplitParameter(
+  const std::string& s,
+  char delim,
+  std::vector<std::string>* append_to
+);
 
 template <typename DescriptorT>
 std::string NamePrefixedWithNestedTypes(const DescriptorT& descriptor,

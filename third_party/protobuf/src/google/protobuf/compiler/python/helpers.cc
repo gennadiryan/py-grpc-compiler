@@ -101,6 +101,45 @@ bool HasGenericServices(const FileDescriptor* file) {
   return file->service_count() > 0 && file->options().py_generic_services();
 }
 
+
+bool ParseParameter(
+  const std::string& parameter,
+  std::vector<std::pair<std::string, std::string>>* options,
+  std::string* error
+) {
+  std::vector<std::string> comma_delimited;
+  SplitParameter(parameter, ',', &comma_delimited);
+  for (std::vector<std::string>::iterator it = comma_delimited.begin(); it != comma_delimited.end(); ++it) {
+    std::vector<std::string> kv;
+    SplitParameter(*it, '=', &kv);
+    if (kv.size() < 2 || kv.size() > 2) {
+      *error = "--python_out expects comma-delimited key-value pairs";
+      return false;
+    }
+    options->push_back(std::pair<std::string, std::string>(kv[0], kv[1]));
+  }
+  return true;
+}
+
+void SplitParameter(
+  const std::string& s,
+  char delim,
+  std::vector<std::string>* append_to
+) {
+  if (!s.empty()) {
+    auto current = s.begin();
+    while (current < s.end()) {
+      const auto next = std::find(current, s.end(), delim);
+      append_to->emplace_back(current, next);
+      current = next + 1;
+      if (current == s.end()) {
+        append_to->emplace_back();
+      }
+    }
+  }
+}
+
+
 template <typename DescriptorT>
 std::string NamePrefixedWithNestedTypes(const DescriptorT& descriptor,
                                         const std::string& separator) {
