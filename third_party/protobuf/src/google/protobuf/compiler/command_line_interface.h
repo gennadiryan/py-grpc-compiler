@@ -337,6 +337,18 @@ class PROTOC_EXPORT CommandLineInterface {
   // listed as free numbers in the output.
   void PrintFreeFieldNumbers(const Descriptor* descriptor);
 
+  // Implements setting parsed_files_mapping to allow inferring top-level python package names.
+  void GetTransitiveDependencySet(
+    const FileDescriptor* file,
+    std::set<const FileDescriptor*>* files
+  );
+
+  bool GetTransitiveDependencyMapping(
+    const std::vector<const FileDescriptor*>& parsed_files,
+    std::vector<std::pair<std::string, std::string>>* parsed_files_mapping,
+    DiskSourceTree* source_tree
+  );
+
   // -----------------------------------------------------------------
 
   // The name of the executable as invoked (i.e. argv[0]).

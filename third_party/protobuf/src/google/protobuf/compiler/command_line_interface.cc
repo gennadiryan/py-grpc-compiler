@@ -961,6 +961,47 @@ std::unique_ptr<SimpleDescriptorDatabase>
 PopulateSingleSimpleDescriptorDatabase(const std::string& descriptor_set_name);
 }
 
+
+void CommandLineInterface::GetTransitiveDependencySet(
+  const FileDescriptor* file,
+  std::set<const FileDescriptor*>* files
+) {
+  if (!files->insert(file).second) {
+    return;
+  }
+  for (int i = 0; i < file->dependency_count(); ++i) {
+    GetTransitiveDependencySet(file->dependency(i), files);
+  }
+}
+
+bool CommandLineInterface::GetTransitiveDependencyMapping(
+  const std::vector<const FileDescriptor*>& parsed_files,
+  std::vector<std::pair<std::string, std::string>>* parsed_files_mapping,
+  DiskSourceTree* source_tree
+) {
+  std::set<const FileDescriptor*> parsed_files_set;
+  for (unsigned int i = 0; i < parsed_files.size(); ++i) {
+    GetTransitiveDependencySet(parsed_files.at(i), &parsed_files_set);
+  }
+
+  for (std::set<const FileDescriptor*>::iterator it = parsed_files_set.begin(); it != parsed_files_set.end(); ++it) {
+    std::string parsed_file_name = (*it)->name();
+    std::string mapped_file_name;
+
+    if (!source_tree->VirtualFileToDiskFile(parsed_file_name, &mapped_file_name)) {
+      std::cerr << "Could not match filename: " << parsed_file_name << "\n";
+      return false;
+    }
+
+    parsed_files_mapping->push_back(std::pair<std::string, std::string>(parsed_file_name, mapped_file_name));
+
+    std::cout << parsed_file_name << ":" << mapped_file_name << "\n";
+  }
+
+  return true;
+}
+
+
 int CommandLineInterface::Run(int argc, const char* const argv[]) {
   Clear();
   switch (ParseArguments(argc, argv)) {
@@ -976,6 +1017,7 @@ int CommandLineInterface::Run(int argc, const char* const argv[]) {
   std::unique_ptr<DiskSourceTree> disk_source_tree;
   std::unique_ptr<ErrorPrinter> error_collector;
   std::unique_ptr<DescriptorPool> descriptor_pool;
+  std::vector<std::pair<std::string, std::string>> parsed_files_mapping;
 
   // The SimpleDescriptorDatabases here are the constituents of the
   // MergedDescriptorDatabase descriptor_set_in_database, so this vector is for
@@ -1046,6 +1088,11 @@ int CommandLineInterface::Run(int argc, const char* const argv[]) {
     return 1;
   }
 
+
+  // set parsed_files_mapping here
+  if (!GetTransitiveDependencyMapping(parsed_files, &parsed_files_mapping, disk_source_tree.get())) {
+    return 1;
+  }
 
   // We construct a separate GeneratorContext for each output location.  Note
   // that two code generators may output to the same location, in which case
@@ -2153,6 +2200,27 @@ bool CommandLineInterface::GenerateOutput(
     }
     if (!GeneratePluginOutput(parsed_files, plugin_name, parameters,
                               generator_context, &error)) {
+      std::cerr << output_directive.name << ": " << error << std::endl;
+      return false;
+    }
+  } else if (output_directive.name == "--python_out") {
+    // Python generator.
+    std::string parameters = output_directive.parameter;
+    if (!generator_parameters_[output_directive.name].empty()) {
+      if (!parameters.empty()) {
+        parameters.append(",");
+      }
+      parameters.append(generator_parameters_[output_directive.name]);
+    }
+    if (!EnforceProto3OptionalSupport(
+            output_directive.name,
+            output_directive.generator->GetSupportedFeatures(), parsed_files)) {
+      return false;
+    }
+
+    if (!output_directive.generator->GenerateAll(parsed_files, parameters,
+                                                 generator_context, &error)) {
+      // Generator returned an error.
       std::cerr << output_directive.name << ": " << error << std::endl;
       return false;
     }
