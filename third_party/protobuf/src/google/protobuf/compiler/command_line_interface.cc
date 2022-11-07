@@ -974,12 +974,14 @@ void CommandLineInterface::GetTransitiveDependencySet(
   }
 }
 
-bool CommandLineInterface::GetTransitiveDependencyMapping(
+bool CommandLineInterface::GetTransitiveDependencyString(
   const std::vector<const FileDescriptor*>& parsed_files,
-  std::vector<std::pair<std::string, std::string>>* parsed_files_mapping,
+  std::string* parsed_files_string,
   DiskSourceTree* source_tree
 ) {
   std::set<const FileDescriptor*> parsed_files_set;
+  std::vector<std::pair<std::string, std::string>> parsed_files_mapping;
+
   for (unsigned int i = 0; i < parsed_files.size(); ++i) {
     GetTransitiveDependencySet(parsed_files.at(i), &parsed_files_set);
   }
@@ -993,10 +995,19 @@ bool CommandLineInterface::GetTransitiveDependencyMapping(
       return false;
     }
 
-    parsed_files_mapping->push_back(std::pair<std::string, std::string>(parsed_file_name, mapped_file_name));
-
-    std::cout << parsed_file_name << ":" << mapped_file_name << "\n";
+    parsed_files_mapping.push_back(std::pair<std::string, std::string>(parsed_file_name, mapped_file_name));
   }
+
+  for (std::vector<std::pair<std::string, std::string>>::iterator it = parsed_files_mapping.begin(); it != parsed_files_mapping.end(); ++it) {
+    if (it != parsed_files_mapping.begin()) {
+      parsed_files_string->append(",");
+    }
+    parsed_files_string->append(it->first);
+    parsed_files_string->append("=");
+    parsed_files_string->append(it->second);
+  }
+
+  std::cout << *parsed_files_string << "\n";
 
   return true;
 }
@@ -1017,7 +1028,6 @@ int CommandLineInterface::Run(int argc, const char* const argv[]) {
   std::unique_ptr<DiskSourceTree> disk_source_tree;
   std::unique_ptr<ErrorPrinter> error_collector;
   std::unique_ptr<DescriptorPool> descriptor_pool;
-  std::vector<std::pair<std::string, std::string>> parsed_files_mapping;
 
   // The SimpleDescriptorDatabases here are the constituents of the
   // MergedDescriptorDatabase descriptor_set_in_database, so this vector is for
@@ -1089,8 +1099,8 @@ int CommandLineInterface::Run(int argc, const char* const argv[]) {
   }
 
 
-  // set parsed_files_mapping here
-  if (!GetTransitiveDependencyMapping(parsed_files, &parsed_files_mapping, disk_source_tree.get())) {
+  // set python_parameter_ here
+  if (!GetTransitiveDependencyString(parsed_files, &python_parameter_, disk_source_tree.get())) {
     return 1;
   }
 

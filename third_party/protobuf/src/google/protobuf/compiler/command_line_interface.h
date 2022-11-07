@@ -343,9 +343,9 @@ class PROTOC_EXPORT CommandLineInterface {
     std::set<const FileDescriptor*>* files
   );
 
-  bool GetTransitiveDependencyMapping(
+  bool GetTransitiveDependencyString(
     const std::vector<const FileDescriptor*>& parsed_files,
-    std::vector<std::pair<std::string, std::string>>* parsed_files_mapping,
+    std::string* parsed_files_string,
     DiskSourceTree* source_tree
   );
 
@@ -374,6 +374,9 @@ class PROTOC_EXPORT CommandLineInterface {
   std::map<std::string, std::string> generator_parameters_;
   // Similar to generator_parameters_, but stores the parameters for plugins.
   std::map<std::string, std::string> plugin_parameters_;
+
+  // Custom parameter storing path mappings for use in module naming
+  std::string python_parameter_;
 
   // See AllowPlugins().  If this is empty, plugins aren't allowed.
   std::string plugin_prefix_;
