@@ -102,6 +102,22 @@ bool HasGenericServices(const FileDescriptor* file) {
 }
 
 
+bool ParseParameters(
+  const std::string& parameter,
+  std::vector<std::pair<std::string, std::string>>* dependencies,
+  std::vector<std::pair<std::string, std::string>>* options,
+  std::string* error
+) {
+  std::vector<std::string> colon_delimited;
+  SplitParameter(parameter, ':', &colon_delimited);
+  if (colon_delimited.size() < 2 || colon_delimited.size() > 2) {
+    *error = "--python_out expects comma-delimited key-value pairs";
+    return false;
+  }
+
+  return ParseParameter(colon_delimited[0], dependencies, error) && ParseParameter(colon_delimited[1], options, error);
+}
+
 bool ParseParameter(
   const std::string& parameter,
   std::vector<std::pair<std::string, std::string>>* options,

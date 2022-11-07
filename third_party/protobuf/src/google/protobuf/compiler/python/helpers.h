@@ -51,6 +51,12 @@ std::string GetFileName(const FileDescriptor* file_des,
                         const std::string& suffix);
 bool HasGenericServices(const FileDescriptor* file);
 
+bool ParseParameters(
+  const std::string& parameter,
+  std::vector<std::pair<std::string, std::string>>* dependencies,
+  std::vector<std::pair<std::string, std::string>>* options,
+  std::string* error
+);
 bool ParseParameter(
   const std::string& parameter,
   std::vector<std::pair<std::string, std::string>>* options,

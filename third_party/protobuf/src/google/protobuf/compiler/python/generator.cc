@@ -216,25 +216,22 @@ bool Generator::Generate(const FileDescriptor* file,
                          const std::string& parameter,
                          GeneratorContext* context, std::string* error) const {
   // -----------------------------------------------------------------
+  std::cout << parameter << "\n\n";
   // parse generator options
-  bool cpp_generated_lib_linked = false;
-
-  std::vector<std::pair<std::string, std::string> > options;
-  ParseGeneratorParameter(parameter, &options);
-
-  for (int i = 0; i < options.size(); i++) {
-    if (options[i].first == "cpp_generated_lib_linked") {
-      cpp_generated_lib_linked = true;
-    } else if (options[i].first == "pyi_out") {
-      python::PyiGenerator pyi_generator;
-      if (!pyi_generator.Generate(file, "", context, error)) {
-        return false;
-      }
-    } else {
-      *error = "Unknown generator option: " + options[i].first;
-      return false;
-    }
+  std::vector<std::pair<std::string, std::string>> dependencies;
+  std::vector<std::pair<std::string, std::string>> options;
+  if (!ParseParameters(parameter, &dependencies, &options, error)) {
+    return false;
   }
+
+  for (std::vector<std::pair<std::string, std::string>>::iterator it = dependencies.begin(); it != dependencies.end(); ++it) {
+    std::cout << it->first << ":" << it->second << "\n";
+  }
+  std::cout << "\n";
+  for (std::vector<std::pair<std::string, std::string>>::iterator it = options.begin(); it != options.end(); ++it) {
+    std::cout << it->first << ":" << it->second << "\n";
+  }
+  std::cout << "\n";
 
   // Completely serialize all Generate() calls on this instance.  The
   // thread-safety constraints of the CodeGenerator interface aren't clear so
@@ -247,7 +244,7 @@ bool Generator::Generate(const FileDescriptor* file,
   file_ = file;
 
   std::string filename = GetFileName(file, ".py");
-  pure_python_workable_ = !cpp_generated_lib_linked;
+  pure_python_workable_ = true;
   if (HasPrefixString(file->name(), "google/protobuf/")) {
     pure_python_workable_ = true;
   }
