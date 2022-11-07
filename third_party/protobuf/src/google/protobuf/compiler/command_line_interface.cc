@@ -1007,8 +1007,6 @@ bool CommandLineInterface::GetTransitiveDependencyString(
     parsed_files_string->append(it->second);
   }
 
-  std::cout << *parsed_files_string << "\n";
-
   return true;
 }
 
@@ -2215,21 +2213,11 @@ bool CommandLineInterface::GenerateOutput(
     }
   } else if (output_directive.name == "--python_out") {
     // Python generator.
-    std::string parameters = output_directive.parameter;
-    if (!generator_parameters_[output_directive.name].empty()) {
-      if (!parameters.empty()) {
-        parameters.append(",");
-      }
-      parameters.append(generator_parameters_[output_directive.name]);
-    }
-    if (!EnforceProto3OptionalSupport(
-            output_directive.name,
-            output_directive.generator->GetSupportedFeatures(), parsed_files)) {
-      return false;
-    }
-
-    if (!output_directive.generator->GenerateAll(parsed_files, parameters,
-                                                 generator_context, &error)) {
+    std::string python_parameter;
+    python_parameter.append(python_parameter_);
+    python_parameter.append(":");
+    python_parameter.append(output_directive.parameter);
+    if (!output_directive.generator->GenerateAll(parsed_files, python_parameter, generator_context, &error)) {
       // Generator returned an error.
       std::cerr << output_directive.name << ": " << error << std::endl;
       return false;
